@@ -1,0 +1,16 @@
+{
+  "name": "Ночной планер",
+  "short_name": "Планер",
+  "description": "Распорядок дня по часам: блоки, привычки и входящие задачи. Работает без интернета.",
+  "lang": "ru",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#1D0B26",
+  "theme_color": "#1D0B26",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
