@@ -1,5 +1,5 @@
-// Ночной планер: офлайн-кэш. При изменении файлов приложения увеличь номер версии.
-var VERSION = 'planer-v7';
+// Dopamine Planner: офлайн-кэш. При изменении файлов приложения увеличь номер версии.
+var VERSION = 'planer-v8';
 var FONTS = 'planer-fonts-v1';
 var CORE = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 

@@ -1,6 +1,6 @@
 {
-  "name": "Ночной планер",
-  "short_name": "Планер",
+  "name": "Dopamine Planner",
+  "short_name": "Dopamine",
   "description": "Распорядок дня по часам: блоки, привычки и входящие задачи. Работает без интернета.",
   "lang": "ru",
   "start_url": "./",
