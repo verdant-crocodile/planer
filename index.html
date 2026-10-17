@@ -195,7 +195,8 @@ select.field { appearance: none; -webkit-appearance: none; background-color: var
 .link-btn { background: none; border: none; padding: 4px 0; color: var(--accent); font-weight: 700; font-size: 14px; align-self: flex-start; }
 .legend { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 2px; }
 .card, .tag, .sw span { box-shadow: inset 0 0 0 1.5px var(--ce, transparent); }
-.card.is-clash { outline: 2px dashed var(--danger); outline-offset: 2px; }
+.card.is-clash { margin-left: 18px; }
+.err.is-soft { color: var(--soft); }
 .err .btn { margin-top: 8px; }
 .tag { display: inline-flex; align-items: center; min-height: 30px; padding: 0 12px; border-radius: 999px; background: var(--cb); color: var(--cf); font-size: 13px; font-weight: 800; }
 
@@ -509,7 +510,7 @@ textarea.field { min-height: 90px; padding: 10px 12px; resize: vertical; font-fa
         '<button type="button" class="check" data-act="toggle" data-id="' + e.id + '" aria-pressed="' + done + '" aria-label="' + (done ? 'Снять отметку: ' : 'Отметить выполненным: ') + esc(e.title) + '">' + CHECK_SVG + '</button>' +
         '<button type="button" class="open" data-act="edit" data-id="' + e.id + '" aria-label="Изменить: ' + esc(e.title) + ', ' + fmtMin(s) + '–' + fmtMin(en) + ', ' + esc(cat(e.cat).name) + '">' +
         (now ? SPARK_SVG : '') + '<span class="title">' + esc(e.title) + '</span>' +
-        '<span class="meta">' + (clash ? '<span class="pill">пересекается</span>' : '') + (now ? '<span class="pill">сейчас</span>' : '') +
+        '<span class="meta">' + (clash ? '<span class="pill">параллельно</span>' : '') + (now ? '<span class="pill">сейчас</span>' : '') +
         (e.repeat !== 'none' ? '<span class="rep" title="' + REPEAT[e.repeat] + '">' + REP_SVG + '</span>' : '') +
         fmtDur(m) + '</span></button></div></div>';
     });
@@ -784,15 +785,17 @@ textarea.field { min-height: 90px; padding: 10px 12px; resize: vertical; font-fa
     else if (!start || !end) err = 'Укажи время начала и конца.';
     else if (toMin(end) <= toMin(start)) err = 'Конец должен быть позже начала. Блоки через полночь пока не поддерживаются.';
     else if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) err = 'Укажи дату.';
-    if (err) { var el = $('f-err'); el.textContent = err; el.hidden = false; return; }
+    if (err) { var el = $('f-err'); el.classList.remove('is-soft'); el.textContent = err; el.hidden = false; return; }
     var e = sheetCtx.id ? findEv(sheetCtx.id) : null;
     var cf = findConflict({ date: date, repeat: repeat, start: start, end: end, skip: e ? e.skip : [] }, sheetCtx.id);
-    if (cf) {
+    if (cf && !sheetCtx.allowClash) {
       var el2 = $('f-err'), dd = parse(cf.d), dur0 = toMin(end) - toMin(start);
       var slot = freeSlot({ date: date, repeat: repeat, start: start, end: end, skip: e ? e.skip : [] }, dur0, toMin(start), sheetCtx.id);
       el2.innerHTML = 'Это время уже занято: «' + esc(cf.e.title) + '» ' + fmtMin(toMin(cf.e.start)) + '–' + fmtMin(toMin(cf.e.end)) +
-        (repeat !== 'none' || cf.d !== date ? ' (' + dd.getDate() + ' ' + MON[dd.getMonth()] + ')' : '') + '. Выбери другое время.' +
-        (slot !== null ? '<br><button type="button" class="btn small" data-act="use-slot" data-start="' + hhmm(slot) + '" data-end="' + hhmm(slot + dur0) + '">Поставить на ' + fmtMin(slot) + '–' + fmtMin(slot + dur0) + '</button>' : '');
+        (repeat !== 'none' || cf.d !== date ? ' (' + dd.getDate() + ' ' + MON[dd.getMonth()] + ')' : '') + '. Блоки наложатся друг на друга.' +
+        '<br><span style="display:inline-flex;flex-wrap:wrap;gap:8px"><button type="button" class="btn small primary" data-act="allow-clash">Сохранить с наложением</button>' +
+        (slot !== null ? '<button type="button" class="btn small" data-act="use-slot" data-start="' + hhmm(slot) + '" data-end="' + hhmm(slot + dur0) + '">Сдвинуть на ' + fmtMin(slot) + '–' + fmtMin(slot + dur0) + '</button>' : '') + '</span>';
+      el2.classList.add('is-soft');
       el2.hidden = false;
       return;
     }
@@ -918,6 +921,7 @@ textarea.field { min-height: 90px; padding: 10px 12px; resize: vertical; font-fa
       case 'use-slot':
         $('f-start').value = t.getAttribute('data-start'); $('f-end').value = t.getAttribute('data-end');
         $('f-err').hidden = true; break;
+      case 'allow-clash': sheetCtx.allowClash = true; saveEditor(); break;
       case 'pet-save': {
         var pn = $('p-name').value.trim();
         if (pn) { S.pet.name = pn.slice(0, 20); save(); renderPet(); status('Имя сохранено.'); }
