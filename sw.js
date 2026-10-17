@@ -1,5 +1,5 @@
 // dopamine planner: офлайн-кэш. При изменении файлов приложения увеличь номер версии.
-var VERSION = 'planer-v12';
+var VERSION = 'planer-v13';
 var FONTS = 'planer-fonts-v1';
 var CORE = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 

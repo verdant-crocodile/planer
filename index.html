@@ -139,8 +139,8 @@ button { cursor: pointer; touch-action: manipulation; }
   .week .icon-btn { width: 32px; }
 }
 
-.row { display: flex; align-items: center; gap: 12px; }
-.row .t { width: 46px; flex: none; font-weight: 700; font-size: 14px; color: var(--soft); font-variant-numeric: tabular-nums; }
+.row { display: flex; align-items: flex-start; gap: 12px; }
+.row .t { width: 46px; flex: none; padding-top: 13px; line-height: 20px; font-weight: 700; font-size: 14px; color: var(--soft); font-variant-numeric: tabular-nums; }
 .card { flex: 1; min-width: 0; border-radius: 18px; padding: 0 6px 0 10px; display: flex; align-items: center; gap: 4px; background: var(--cb); color: var(--cf); transition: opacity .2s, transform .15s; }
 .card:active { transform: scale(0.99); }
 .card.is-done { opacity: 0.5; }
@@ -200,7 +200,12 @@ select.field { padding: 0 14px; }
 .link-btn { background: none; border: none; padding: 4px 0; color: var(--accent); font-weight: 700; font-size: 14px; align-self: flex-start; }
 .legend { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 2px; }
 .card, .tag, .sw span { box-shadow: inset 0 0 0 1.5px var(--ce, transparent); }
-.card.is-clash { margin-left: 18px; }
+.row.is-over { position: relative; z-index: 2; align-items: flex-start; pointer-events: none; }
+.row.is-over .t { padding-top: 2px; text-shadow: 0 1px 6px var(--bg); }
+.card.is-clash { position: relative; padding-top: var(--ov); background: linear-gradient(to bottom, transparent var(--ov), var(--cb) var(--ov)); }
+.card.is-clash > button { pointer-events: auto; }
+.card.is-clash .ov-zone { position: absolute; left: 0; right: 0; top: 0; height: var(--ov); box-sizing: border-box; border: 2px dashed var(--fg); border-bottom: none; border-radius: 18px 18px 0 0; background: repeating-linear-gradient(135deg, rgba(255, 244, 251, 0.18) 0 6px, transparent 6px 12px); pointer-events: none; }
+.card.is-clash-far { outline: 2px dashed var(--fg); outline-offset: -2px; }
 .err.is-soft { color: var(--soft); }
 .err .btn { margin-top: 8px; }
 .tag { display: inline-flex; align-items: center; min-height: 30px; padding: 0 12px; border-radius: 999px; background: var(--cb); color: var(--cf); font-size: 13px; font-weight: 800; }
@@ -498,24 +503,45 @@ textarea.field { min-height: 90px; padding: 10px 12px; resize: vertical; font-fa
       html += '<div class="empty"><strong>На этот день ничего нет</strong><span>Добавь первый блок: время, название и цвет.</span>' +
         '<button type="button" class="btn primary" data-act="new">+ Новый блок</button></div>';
     }
-    var prevEnd = null;
-    list.forEach(function (e) {
+    /* проход 1: размеры и наложения */
+    var items = [], prevEnd = null;
+    list.forEach(function (e, i) {
       var s = toMin(e.start), en = toMin(e.end), m = en - s;
-      if (prevEnd !== null && s - prevEnd >= 15) {
-        html += '<button type="button" class="gap" data-act="new" data-start="' + hhmm(prevEnd) + '" data-end="' + hhmm(s) + '">' +
-          '<span aria-hidden="true">+</span> Свободно ' + fmtDur(s - prevEnd) + ' · ' + fmtMin(prevEnd) + '–' + fmtMin(s) + '</button>';
+      var it = { e: e, s: s, en: en, m: m, h: Math.max(46, Math.min(200, Math.round(30 + m / 60 * 20))), ov: 0, padB: 0, gapFrom: null };
+      if (prevEnd !== null && s - prevEnd >= 15) it.gapFrom = prevEnd;
+      it.clash = prevEnd !== null && s < prevEnd;
+      var last = items[i - 1];
+      it.near = it.clash && last && s < last.en;
+      if (it.near) {
+        var lm = Math.max(1, last.en - last.s);
+        var off = Math.max(0, s - last.s);
+        if (off > 0) last.h = Math.min(260, Math.max(last.h, Math.ceil(46 * lm / off)));
+        var upper = Math.max(46, Math.round(last.h * off / lm));
+        if (upper > last.h - 14) last.h = upper + 14;
+        it.ov = last.h - upper;
+        last.padB = it.ov;
+        it.h = Math.max(it.h, it.ov + 46);
       }
-      var clash = prevEnd !== null && s < prevEnd;
       prevEnd = prevEnd === null ? en : Math.max(prevEnd, en);
+      items.push(it);
+    });
+    /* проход 2: разметка */
+    items.forEach(function (it) {
+      var e = it.e, s = it.s, en = it.en, m = it.m, h = it.h, ov = it.ov, near = it.near;
+      if (it.gapFrom !== null) {
+        html += '<button type="button" class="gap" data-act="new" data-start="' + hhmm(it.gapFrom) + '" data-end="' + hhmm(s) + '">' +
+          '<span aria-hidden="true">+</span> Свободно ' + fmtDur(s - it.gapFrom) + ' · ' + fmtMin(it.gapFrom) + '–' + fmtMin(s) + '</button>';
+      }
       var done = !!e.done[sel];
       var now = isToday && s <= n && n < en;
-      var h = Math.max(46, Math.min(200, Math.round(30 + m / 60 * 20)));
-      html += '<div class="row"><div class="t">' + fmtMin(s) + '</div>' +
-        '<div class="card' + (done ? ' is-done' : '') + (now ? ' is-now' : '') + (clash ? ' is-clash' : '') + '" style="' + cvars(e.cat) + ';height:' + h + 'px">' +
+      var cardStyle = cvars(e.cat) + ';height:' + h + 'px' + (near ? ';--ov:' + ov + 'px' : '') + (it.padB ? ';padding-bottom:' + it.padB + 'px' : '');
+      html += '<div class="row' + (near ? ' is-over' : '') + '"' + (near ? ' style="margin-top:-' + (ov + 6) + 'px"' : '') + '><div class="t">' + fmtMin(s) + '</div>' +
+        '<div class="card' + (done ? ' is-done' : '') + (now ? ' is-now' : '') + (near ? ' is-clash' : (it.clash ? ' is-clash-far' : '')) + '" style="' + cardStyle + '">' +
+        (near ? '<span class="ov-zone" aria-hidden="true"></span>' : '') +
         '<button type="button" class="check" data-act="toggle" data-id="' + e.id + '" aria-pressed="' + done + '" aria-label="' + (done ? 'Снять отметку: ' : 'Отметить выполненным: ') + esc(e.title) + '">' + CHECK_SVG + '</button>' +
         '<button type="button" class="open" data-act="edit" data-id="' + e.id + '" aria-label="Изменить: ' + esc(e.title) + ', ' + fmtMin(s) + '–' + fmtMin(en) + ', ' + esc(cat(e.cat).name) + '">' +
         (now ? SPARK_SVG : '') + '<span class="title">' + esc(e.title) + '</span>' +
-        '<span class="meta">' + (clash ? '<span class="pill">параллельно</span>' : '') + (now ? '<span class="pill">сейчас</span>' : '') +
+        '<span class="meta">' + (now ? '<span class="pill">сейчас</span>' : '') +
         (e.repeat !== 'none' ? '<span class="rep" title="' + REPEAT[e.repeat] + '">' + REP_SVG + '</span>' : '') +
         fmtDur(m) + '</span></button></div></div>';
     });
