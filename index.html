@@ -194,6 +194,9 @@ select.field { appearance: none; -webkit-appearance: none; background-color: var
 .x:hover { color: var(--fg); background: var(--line); }
 .link-btn { background: none; border: none; padding: 4px 0; color: var(--accent); font-weight: 700; font-size: 14px; align-self: flex-start; }
 .legend { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 2px; }
+.card, .tag, .sw span { box-shadow: inset 0 0 0 1.5px var(--ce, transparent); }
+.card.is-clash { outline: 2px dashed var(--danger); outline-offset: 2px; }
+.err .btn { margin-top: 8px; }
 .tag { display: inline-flex; align-items: center; min-height: 30px; padding: 0 12px; border-radius: 999px; background: var(--cb); color: var(--cf); font-size: 13px; font-weight: 800; }
 
 .scrim { position: fixed; inset: 0; background: var(--scrim); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 10; }
@@ -310,12 +313,19 @@ textarea.field { min-height: 90px; padding: 10px 12px; resize: vertical; font-fa
     salad: { name: 'Салат', bg: '#BEDA62', fg: '#3B2D9E' },
     sky: { name: 'Небо', bg: '#81CFFF', fg: '#1B3A8F' },
     lavender: { name: 'Лаванда', bg: '#F9EAFF', fg: '#8A2FB0' },
-    orchid: { name: 'Орхидея', bg: '#C2309F', fg: '#FFFFFF' },
+    orchid: { name: 'Орхидея', bg: '#C936AE', fg: '#FFFFFF' },
     canary: { name: 'Канарейка', bg: '#F6F67B', fg: '#4D5C00' },
     amethyst: { name: 'Аметист', bg: '#A144C5', fg: '#FFF3FA' },
     mist: { name: 'Розовый туман', bg: '#FFEAFC', fg: '#B0247F' },
     mauve: { name: 'Мов', bg: '#BCA4F5', fg: '#2D1060' },
-    lemonade: { name: 'Лимонад', bg: '#ECFFBE', fg: '#6A2FB8' }
+    lemonade: { name: 'Лимонад', bg: '#ECFFBE', fg: '#6A2FB8' },
+    lightyellow: { name: 'Светло-жёлтый', bg: '#F5FBDA', fg: '#A33E79' },
+    teagreen: { name: 'Чайная зелень', bg: '#D9EFBD', fg: '#450C3F' },
+    willow: { name: 'Ива', bg: '#B9D175', fg: '#450C3F' },
+    berry: { name: 'Ягодный', bg: '#A33E79', fg: '#F5FBDA' },
+    midnight: { name: 'Полночь', bg: '#450C3F', fg: '#B9D175', edge: '#8A3B7E' },
+    honeydew: { name: 'Медовая роса', bg: '#E5F8F0', fg: '#3550B0' },
+    royal: { name: 'Королевский синий', bg: '#4A69CE', fg: '#F5FBDA' }
   };
   var PAIR_KEYS = Object.keys(PAIRS);
   var DEFAULT_CATS = [
@@ -416,8 +426,8 @@ textarea.field { min-height: 90px; padding: 10px 12px; resize: vertical; font-fa
 
   function cat(id) { for (var i = 0; i < S.cats.length; i++) if (S.cats[i].id === id) return S.cats[i]; return S.cats[0]; }
   function pairOf(catId) { return PAIRS[cat(catId).pair] || PAIRS.periwinkle; }
-  function cvars(catId) { var p = pairOf(catId); return '--cb:' + p.bg + ';--cf:' + p.fg; }
-  function pvars(key) { var p = PAIRS[key]; return '--cb:' + p.bg + ';--cf:' + p.fg; }
+  function cvars(catId) { var p = pairOf(catId); return '--cb:' + p.bg + ';--cf:' + p.fg + ';--ce:' + (p.edge || 'transparent'); }
+  function pvars(key) { var p = PAIRS[key]; return '--cb:' + p.bg + ';--cf:' + p.fg + ';--ce:' + (p.edge || 'transparent'); }
 
   function occurs(e, d) {
     if (d < e.date) return false;
@@ -489,16 +499,17 @@ textarea.field { min-height: 90px; padding: 10px 12px; resize: vertical; font-fa
         html += '<button type="button" class="gap" data-act="new" data-start="' + hhmm(prevEnd) + '" data-end="' + hhmm(s) + '">' +
           '<span aria-hidden="true">+</span> Свободно ' + fmtDur(s - prevEnd) + ' · ' + fmtMin(prevEnd) + '–' + fmtMin(s) + '</button>';
       }
+      var clash = prevEnd !== null && s < prevEnd;
       prevEnd = prevEnd === null ? en : Math.max(prevEnd, en);
       var done = !!e.done[sel];
       var now = isToday && s <= n && n < en;
       var h = Math.max(46, Math.min(200, Math.round(30 + m / 60 * 20)));
       html += '<div class="row"><div class="t">' + fmtMin(s) + '</div>' +
-        '<div class="card' + (done ? ' is-done' : '') + (now ? ' is-now' : '') + '" style="' + cvars(e.cat) + ';height:' + h + 'px">' +
+        '<div class="card' + (done ? ' is-done' : '') + (now ? ' is-now' : '') + (clash ? ' is-clash' : '') + '" style="' + cvars(e.cat) + ';height:' + h + 'px">' +
         '<button type="button" class="check" data-act="toggle" data-id="' + e.id + '" aria-pressed="' + done + '" aria-label="' + (done ? 'Снять отметку: ' : 'Отметить выполненным: ') + esc(e.title) + '">' + CHECK_SVG + '</button>' +
         '<button type="button" class="open" data-act="edit" data-id="' + e.id + '" aria-label="Изменить: ' + esc(e.title) + ', ' + fmtMin(s) + '–' + fmtMin(en) + ', ' + esc(cat(e.cat).name) + '">' +
         (now ? SPARK_SVG : '') + '<span class="title">' + esc(e.title) + '</span>' +
-        '<span class="meta">' + (now ? '<span class="pill">сейчас</span>' : '') +
+        '<span class="meta">' + (clash ? '<span class="pill">пересекается</span>' : '') + (now ? '<span class="pill">сейчас</span>' : '') +
         (e.repeat !== 'none' ? '<span class="rep" title="' + REPEAT[e.repeat] + '">' + REP_SVG + '</span>' : '') +
         fmtDur(m) + '</span></button></div></div>';
     });
@@ -734,6 +745,37 @@ textarea.field { min-height: 90px; padding: 10px 12px; resize: vertical; font-fa
     return hhmm(Math.min(m, 22 * 60));
   }
 
+  function overlaps(a, b) { return toMin(a.start) < toMin(b.end) && toMin(b.start) < toMin(a.end); }
+  function findConflict(cand, ignoreId) {
+    var days = cand.repeat === 'none' ? 1 : 120;
+    for (var i = 0; i < days; i++) {
+      var d = addDays(cand.date, i);
+      if (!occurs(cand, d)) continue;
+      for (var j = 0; j < S.events.length; j++) {
+        var o = S.events[j];
+        if (o.id === ignoreId || !occurs(o, d)) continue;
+        if (overlaps(cand, o)) return { e: o, d: d };
+      }
+    }
+    return null;
+  }
+  function freeSlot(cand, dur, from, ignoreId) {
+    var busy = [], days = cand.repeat === 'none' ? 1 : 28;
+    for (var k = 0; k < days; k++) {
+      var dk = addDays(cand.date, k);
+      if (occurs(cand, dk)) busy = busy.concat(eventsOn(dk).filter(function (o) { return o.id !== ignoreId; }));
+    }
+    var t = from, moved = true;
+    while (moved) {
+      moved = false;
+      for (var i = 0; i < busy.length; i++) {
+        var s0 = toMin(busy[i].start), e0 = toMin(busy[i].end);
+        if (t < e0 && s0 < t + dur) { t = e0; moved = true; }
+      }
+    }
+    return t + dur <= 24 * 60 - 1 ? t : null;
+  }
+
   function saveEditor() {
     var title = $('f-title').value.trim(), start = $('f-start').value, end = $('f-end').value, date = $('f-date').value, repeat = $('f-repeat').value;
     var catEl = document.querySelector('input[name="f-cat"]:checked'), c = catEl ? catEl.value : S.cats[0].id;
@@ -744,6 +786,16 @@ textarea.field { min-height: 90px; padding: 10px 12px; resize: vertical; font-fa
     else if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) err = 'Укажи дату.';
     if (err) { var el = $('f-err'); el.textContent = err; el.hidden = false; return; }
     var e = sheetCtx.id ? findEv(sheetCtx.id) : null;
+    var cf = findConflict({ date: date, repeat: repeat, start: start, end: end, skip: e ? e.skip : [] }, sheetCtx.id);
+    if (cf) {
+      var el2 = $('f-err'), dd = parse(cf.d), dur0 = toMin(end) - toMin(start);
+      var slot = freeSlot({ date: date, repeat: repeat, start: start, end: end, skip: e ? e.skip : [] }, dur0, toMin(start), sheetCtx.id);
+      el2.innerHTML = 'Это время уже занято: «' + esc(cf.e.title) + '» ' + fmtMin(toMin(cf.e.start)) + '–' + fmtMin(toMin(cf.e.end)) +
+        (repeat !== 'none' || cf.d !== date ? ' (' + dd.getDate() + ' ' + MON[dd.getMonth()] + ')' : '') + '. Выбери другое время.' +
+        (slot !== null ? '<br><button type="button" class="btn small" data-act="use-slot" data-start="' + hhmm(slot) + '" data-end="' + hhmm(slot + dur0) + '">Поставить на ' + fmtMin(slot) + '–' + fmtMin(slot + dur0) + '</button>' : '');
+      el2.hidden = false;
+      return;
+    }
     if (e) {
       e.title = title; e.cat = c; e.start = start; e.end = end; e.repeat = repeat; e.date = date; e.example = false;
     } else {
@@ -863,6 +915,9 @@ textarea.field { min-height: 90px; padding: 10px 12px; resize: vertical; font-fa
         break;
       }
       case 'pet': petTap(); break;
+      case 'use-slot':
+        $('f-start').value = t.getAttribute('data-start'); $('f-end').value = t.getAttribute('data-end');
+        $('f-err').hidden = true; break;
       case 'pet-save': {
         var pn = $('p-name').value.trim();
         if (pn) { S.pet.name = pn.slice(0, 20); save(); renderPet(); status('Имя сохранено.'); }
